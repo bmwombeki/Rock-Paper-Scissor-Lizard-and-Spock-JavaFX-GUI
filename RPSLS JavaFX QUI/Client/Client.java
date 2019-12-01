@@ -106,5 +106,6 @@ class GameInfo implements Serializable {
     String p2Plays = "";
     String opponent;
     String thisPlayer;
+    boolean roundEnd = false;
 
 }
