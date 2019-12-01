@@ -27,9 +27,15 @@ public class Server  {
     ArrayList<Integer> clientListinServer = new ArrayList<>();
     int gameRoomNumber = 0;
 
+    public Server(){
+        this.player1Choice = player1Choice;
+    }
+
     public class gameRoomIDs{
         String p1;
         String p2;
+        String p1Gesture = "";
+        String p2Gesture = "";
     }
 
     HashMap<Integer, gameRoomIDs> gameRoom = new HashMap<>();
@@ -98,35 +104,25 @@ public class Server  {
         //**********************************************************************************************************************************
         // Changes are here
         public void updateClients(Serializable game) {        // Running on its own thread
+            synchronized (game) {
+                String isOpponent = "";
+                for (int i = 0; i < clients.size(); i++) {    // Still able to access other threads
+                    ClientThread t = clients.get(i);        // TheServer and Client are inner classes of server
+                    try {                                    // Every single instance of client thread class has access
 
-            String isOpponent = "";
-            for (int i = 0; i < clients.size(); i++) {    // Still able to access other threads
-                ClientThread t = clients.get(i);        // TheServer and Client are inner classes of server
-                try {                                    // Every single instance of client thread class has access
+                        System.out.println("Update client");
 
-                    System.out.println("Update client");
+                        t.gameInfo.gameFlag = 1;
+                        t.out.writeObject(game);            // Because they are nested they have access to data members of other classes
+                        t.out.reset();
+                        //}
 
-                    t.gameInfo.gameFlag = 1;
-                    t.out.writeObject(game);            // Because they are nested they have access to data members of other classes
-                    t.out.reset();
-                    //}
-
-                } catch (Exception e) {
+                    } catch (Exception e) {
+                    }
                 }
             }
         }
 //**********************************************************************************************************************************
-
-        public void updateClientText(String message){
-            for(int i = 0; i < clients.size(); i++){
-                ClientThread p = clients.get(i);
-                try{
-                    p.out.writeObject(message);
-                    p.out.reset();
-                }
-                catch(Exception e){}
-            }
-        }
 
         public void run() {
 
@@ -160,16 +156,19 @@ public class Server  {
                     }
                     thisPlayer = count;
 
-
                     if(gameInfo.gameFlag == 1) {
                         //int player1 = gameInfo.client;
                         //int player2 = gameInfo.opponent;
                         gameRoomIDs newGameRoom = new gameRoomIDs();
                         newGameRoom.p1 = gameInfo.thisPlayer;
                         newGameRoom.p2 = gameInfo.opponent;
-
-
-                        if (gameRoom.containsValue(newGameRoom.p1) == false && gameRoom.containsValue(newGameRoom.p2) == false) {
+                        if(newGameRoom.p1Gesture.equals("")) {
+                            newGameRoom.p1Gesture = gameInfo.choice;
+                        }
+                        else{
+                            newGameRoom.p2Gesture = gameInfo.choice;
+                        }
+                        if ((gameRoom.containsValue(newGameRoom.p1) == false) && (gameRoom.containsValue(newGameRoom.p2) == false)) {
                             gameRoomNumber++;
                             gameRoom.put(gameRoomNumber, newGameRoom);
 
@@ -190,6 +189,27 @@ public class Server  {
                         gameInfo.opponent = "";// reset the strings back to "" in order to wait for the next game
                         gameInfo.gameFlag = 0;
                     }
+//*******************************************************************************************************************************************
+                    System.out.println("gameInfo.p1Plays = " + gameInfo.p1Plays);
+                    System.out.println("gameInfo.p2Plays = " + gameInfo.p2Plays);
+
+                        //whoWonTheGame = whoWon(gameRoom.get, gameInfo.p2Plays);
+
+                    if(whoWonTheGame.equals("waiting for other player to pick something...")){
+                        gameInfo.roundEnd = false;
+                    }
+
+                    if(whoWonTheGame.equals("Player1")){
+                        gameInfo.roundEnd = true;
+                    }
+                    if(whoWonTheGame.equals("Player2")){
+                        gameInfo.roundEnd = true;
+                    }
+                    if(whoWonTheGame.equals("draw")){
+                        gameInfo.roundEnd = true;
+                    }
+
+
 //*******************************************************************************************************************************************
 
                     updateClients(gameInfo);
@@ -334,7 +354,7 @@ class GameInfo implements Serializable {
     boolean isThirdSceneMessage = false;
     boolean isChatMessage = false;
     String playersMessage = " ";
-    String requestMessage = " "; 
+    String requestMessage = " ";
     String chatMessage = " ";
     String thirdSceneMessage = " ";
     int client = 0;
@@ -353,5 +373,6 @@ class GameInfo implements Serializable {
     String p2Plays = "";
     String opponent;
     String thisPlayer;
+    boolean roundEnd = false;
 
 }
